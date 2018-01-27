@@ -31,7 +31,12 @@ int main(int argc, char** argv)
 	while (1) {
 	
 		int sockfd = connect_to(argv[1], argv[2]);
-    
+		
+		if (sockfd < 0){
+			printf("Closing client");
+			exit(1);
+		}
+	
 		char command[MAX_DATA];
         get_command(command, MAX_DATA);
 
@@ -134,17 +139,23 @@ struct Reply process_command(const int sockfd, char* command)
 	// ------------------------------------------------------------
 	
 	struct Reply reply;
+	reply.status = FAILURE_INVALID;
+	reply.num_member = 0;
+	reply.port = 0;
+	
 	char *text[2];
 	char *token;
 	int i = 0;
 	
+	token = strtok(command, " ");
+	text[0] = token;
 	while(token != NULL){
+		i++;
 		token = strtok (NULL, " ");
 		text[i] = token;
-		i++;
 	}
 	
-	printf("Command: %s, name: %s",text[0], text[1]);
+	printf("Command: %s, name: %s\n",text[0], text[1]);
 	fflush(stdout);
 	
 	// ------------------------------------------------------------
