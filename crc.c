@@ -3,6 +3,7 @@
 #include <unistd.h>
 #include <sys/types.h>
 #include <sys/time.h>
+#include <sys/socket.h>
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -13,7 +14,7 @@
 /*
  * TODO: IMPLEMENT BELOW THREE FUNCTIONS
  */
-int connect_to(const char *host, const int port);
+int connect_to(const char *host, const char *port);
 struct Reply process_command(const int sockfd, char* command);
 void process_chatmode(const char* host, const int port);
 
@@ -26,10 +27,10 @@ int main(int argc, char** argv)
 	}
 
     display_title();
-    
+	
 	while (1) {
 	
-		int sockfd = connect_to(argv[1], atoi(argv[2]));
+		int sockfd = connect_to(argv[1], argv[2]);
     
 		char command[MAX_DATA];
         get_command(command, MAX_DATA);
@@ -57,7 +58,7 @@ int main(int argc, char** argv)
  * 
  * @return socket fildescriptor
  */
-int connect_to(const char *host, const int port)
+int connect_to(const char *host, const char *port)
 {
 	// ------------------------------------------------------------
 	// GUIDE :
@@ -68,9 +69,35 @@ int connect_to(const char *host, const int port)
 	// Finally, you should return the socket fildescriptor
 	// so that other functions such as "process_command" can use it
 	// ------------------------------------------------------------
-
-    // below is just dummy code for compilation, remove it.
-	int sockfd = -1;
+	
+	struct addrinfo hints, *res;
+	int sockfd;
+	
+	memset(&hints, 0, sizeof hints);
+	hints.ai_family = AF_INET;
+	hints.ai_socktype = SOCK_STREAM;
+	
+	int status;
+	
+	if ((status = getaddrinfo(host, port, &hints, &res)) != 0){
+		fprintf(stderr,"Error with getaddrinfo: %s\n", gai_strerror(status));
+		return -1;
+	}
+	
+	sockfd = socket(res->ai_family, res->ai_socktype, res->ai_protocol);
+	if (sockfd < 0){
+		perror ("Error creating socket\n");
+		return -1;
+	}
+	
+	if (connect(sockfd, res->ai_addr, res->ai_addrlen) < 0){
+		perror ("Error connecting to server\n");
+		return -1;
+	}
+	
+	printf("Connected to host %s\n", host);
+	fflush(stdout);
+	
 	return sockfd;
 }
 
@@ -103,7 +130,32 @@ struct Reply process_command(const int sockfd, char* command)
 	// 
 	// - CREATE/DELETE/JOIN and "<name>" are separated by one space.
 	// ------------------------------------------------------------
-
+	
+	char *text[2];
+	char *token;
+	int i = 0;
+	
+	while(token != NULL){
+		token = strtok (NULL, " ");
+		text[i] = token;
+		i++;
+	}
+	
+	
+	
+	printf("name: %s, command: %s",text[1], text[2]);
+	fflush(stdout);
+	
+	if (strncmp(comm, "JOIN", 4) == 0) {
+		printf("#Members: %d\n", reply.num_member);
+		printf("#Port: %d\n", reply.port);
+	} 
+	else if (strncmp(comm, "LIST", 4) == 0) {
+		printf("List: %s\n", reply.list_room);
+	}
+	else if (strncmp(comm, "LIST", 4) == 0) {
+		printf("List: %s\n", reply.list_room);
+	}
 
 	// ------------------------------------------------------------
 	// GUIDE 2:
