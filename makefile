@@ -1,14 +1,12 @@
-HEADERS = interface.h
-
 default: crc crsd
 
-crc.o: crc.c $(HEADERS)
+crc.o: crc.c interface.h
     gcc -c crc.c -o crc.o
 
 crc: crc.o
     gcc crc.o -o crc
 
-crsd.o: crsd.c $(HEADERS)
+crsd.o: crsd.c interface.h
     gcc -c crsd.c -o crsd.o
 
 crsd: crsd.o
