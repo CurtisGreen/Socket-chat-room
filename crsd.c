@@ -24,11 +24,12 @@ int main(int argc, char** argv) {
   	int    m_sock, s_sock;      /* master and slave socket     */
   	//struct sockaddr_storage fsin;
  	service = argv[1];
-
+ 	printf("Server starting on port %s...",service);
   	m_sock = passiveTCPsock(service, 32);
   	pthread_t th; pthread_attr_t ta;
   	pthread_attr_init(&ta);
   	pthread_attr_setdetachstate(&ta, PTHREAD_CREATE_DETACHED);
+  	printf("Success!\n");
   	for (;;) {
     	//s_sock = accept(m_sock,(struct sockaddr*)&fsin, sizeof(fsin));
     	s_sock = accept(m_sock,NULL,NULL);
@@ -72,7 +73,7 @@ int passiveTCPsock(const char * service, int backlog) {
 
 void *handle_request(void * vfd){
 	int fd = *(int*)vfd;
-	//TODO handle request
+	printf("In Handle Request\n");
 	close(fd);
 }
 
