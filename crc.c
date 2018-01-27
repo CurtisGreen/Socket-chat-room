@@ -16,7 +16,7 @@
  */
 int connect_to(const char *host, const char *port);
 struct Reply process_command(const int sockfd, char* command);
-void process_chatmode(const char* host, const int port);
+void process_chatmode(const char* host, const char* port);
 
 int main(int argc, char** argv) 
 {
@@ -40,8 +40,10 @@ int main(int argc, char** argv)
 		
 		touppercase(command, strlen(command) - 1);
 		if (strncmp(command, "JOIN", 4) == 0) {
+			char buf[256];
+			sprintf(buf,"%d",reply.port);
 			printf("Now you are in the chatmode\n");
-			process_chatmode(argv[1], reply.port);
+			process_chatmode(argv[1], buf);
 		}
 	
 		close(sockfd);
@@ -131,6 +133,7 @@ struct Reply process_command(const int sockfd, char* command)
 	// - CREATE/DELETE/JOIN and "<name>" are separated by one space.
 	// ------------------------------------------------------------
 	
+	struct Reply reply;
 	char *text[2];
 	char *token;
 	int i = 0;
@@ -141,28 +144,17 @@ struct Reply process_command(const int sockfd, char* command)
 		i++;
 	}
 	
-	
-	
-	printf("name: %s, command: %s",text[1], text[2]);
+	printf("Command: %s, name: %s",text[0], text[1]);
 	fflush(stdout);
 	
-	if (strncmp(comm, "JOIN", 4) == 0) {
-		printf("#Members: %d\n", reply.num_member);
-		printf("#Port: %d\n", reply.port);
-	} 
-	else if (strncmp(comm, "LIST", 4) == 0) {
-		printf("List: %s\n", reply.list_room);
-	}
-	else if (strncmp(comm, "LIST", 4) == 0) {
-		printf("List: %s\n", reply.list_room);
-	}
-
 	// ------------------------------------------------------------
 	// GUIDE 2:
 	// After you create the message, you need to send it to the
 	// server and receive a result from the server.
 	// ------------------------------------------------------------
 
+	send(sockfd, text, sizeof text, 0);
+	recv(sockfd, (void*)&reply, sizeof reply, 0);
 
 	// ------------------------------------------------------------
 	// GUIDE 3:
@@ -206,11 +198,6 @@ struct Reply process_command(const int sockfd, char* command)
     // as "r1,r2,r3,"
 	// ------------------------------------------------------------
 
-	// REMOVE below code and write your own Reply.
-	struct Reply reply;
-	reply.status = SUCCESS;
-	reply.num_member = 5;
-	reply.port = 1024;
 	return reply;
 }
 
@@ -220,7 +207,7 @@ struct Reply process_command(const int sockfd, char* command)
  * @parameter host     host address
  * @parameter port     port
  */
-void process_chatmode(const char* host, const int port)
+void process_chatmode(const char* host, const char* port)
 {
 	// ------------------------------------------------------------
 	// GUIDE 1:
@@ -229,6 +216,8 @@ void process_chatmode(const char* host, const int port)
 	// You may re-use the function "connect_to".
 	// ------------------------------------------------------------
 
+	int sockfd = connect_to(host, port);
+	
 	// ------------------------------------------------------------
 	// GUIDE 2:
 	// Once the client have been connected to the server, we need
@@ -236,6 +225,14 @@ void process_chatmode(const char* host, const int port)
 	// At the same time, the client should wait for a message from
 	// the server.
 	// ------------------------------------------------------------
+	
+	char *buff;
+	while (1){
+		get_message(buff, sizeof buff);
+		recv(sockfd, buff, sizeof buff, 0);
+		display_message(buff);
+		
+	}
 	
     // ------------------------------------------------------------
     // IMPORTANT NOTICE:
