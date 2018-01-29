@@ -41,6 +41,8 @@ int main(int argc, char** argv)
         get_command(command, MAX_DATA);
 
 		struct Reply reply = process_command(sockfd, command);
+		printf("got out of process_command\n");
+		fflush(stdout);
 		display_reply(command, reply);
 		
 		touppercase(command, strlen(command) - 1);
@@ -139,9 +141,10 @@ struct Reply process_command(const int sockfd, char* command)
 	// ------------------------------------------------------------
 	
 	struct Reply reply;
-	reply.status = FAILURE_INVALID;
-	reply.num_member = 0;
-	reply.port = 0;
+	reply.status = FAILURE_NOT_EXISTS;
+	reply.num_member = 10;
+	reply.port = 3000;
+	sprintf(reply.list_room, "default room,");
 	
 	char *text[2];
 	char *token;
@@ -153,7 +156,7 @@ struct Reply process_command(const int sockfd, char* command)
 		i++;
 		token = strtok (NULL, " ");
 		text[i] = token;
-	}
+	}    
 	
 	printf("Command: %s, name: %s\n",text[0], text[1]);
 	fflush(stdout);
@@ -164,8 +167,17 @@ struct Reply process_command(const int sockfd, char* command)
 	// server and receive a result from the server.
 	// ------------------------------------------------------------
 
-	send(sockfd, text, sizeof text, 0);
-	recv(sockfd, (void*)&reply, sizeof reply, 0);
+	int data[3];
+	char list_room[MAX_DATA];
+	recv(sockfd, data, 3*sizeof(int), 0);
+	recv(sockfd, list_room, MAX_DATA,0);
+
+	printf("status = %d, num_members = %d, port = %d, list = %s\n",data[0], data[1], data[2], list_room);
+
+	reply.status = (Status)data[0];
+	reply.num_member = data[1];
+	reply.port = data[2];
+	sprintf(reply.list_room, list_room);
 
 	// ------------------------------------------------------------
 	// GUIDE 3:

@@ -21,7 +21,7 @@ int errexit(const char *format, ...);
 
 int main(int argc, char** argv) {
 	char * service; /* service name or port number */
-  	int    m_sock, s_sock;      /* master and slave socket     */
+    int    m_sock, s_sock;      /* master and slave socket     */
   	//struct sockaddr_storage fsin;
  	service = argv[1];
  	printf("Server starting on port %s...",service);
@@ -72,8 +72,38 @@ int passiveTCPsock(const char * service, int backlog) {
 }
 
 void *handle_request(void * vfd){
-	int fd = *(int*)vfd;
-	printf("In Handle Request\n");
+    int fd = *(int*)vfd;
+    printf("In Handle Request\n");
+
+    /* dont think this is necessary****
+    struct sockaddr_storage client_addr;
+    socklen_t addr_size = sizeof client_addr;
+    int new_fd = accept(fd, (struct sockaddr *)&client_addr, &addr_size);
+    if(new_fd == -1){
+        printf("Failed creating new fd\n");
+        fflush(stdout);
+    }
+    **********************************/
+
+    printf("connected successfully\n");
+    fflush(stdout);
+
+    //TODO: if it is create, create a room, if it is join give the port
+    //      if it is list room list them (need to set up a char* for it)
+    //      Also, handle errors
+
+    // Default data
+    int status = 0;
+    int num = 15;
+    int port = 3001;
+    char list_room[MAX_DATA];
+    sprintf(list_room, "test room,");
+
+    //send status, num_members, and port
+    int data[3] = {0, 15, 3005};
+    send(fd, (char*)data, 3*sizeof(int), 0);
+    send(fd, list_room, strlen (list_room)+1, 0);
+
 	close(fd);
 }
 
