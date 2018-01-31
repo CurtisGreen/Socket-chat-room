@@ -11,9 +11,6 @@
 #include "interface.h"
 
 
-/*
- * TODO: IMPLEMENT BELOW THREE FUNCTIONS
- */
 int connect_to(const char *host, const char *port);
 struct Reply process_command(const int sockfd, char* command);
 void process_chatmode(const char* host, const char* port);
@@ -146,21 +143,6 @@ struct Reply process_command(const int sockfd, char* command)
 	reply.port = 3000;
 	sprintf(reply.list_room, "default room,");
 	
-	char *text[2];
-	char *token;
-	int i = 0;
-	
-	token = strtok(command, " ");
-	text[0] = token;
-	while(token != NULL){
-		i++;
-		token = strtok (NULL, " ");
-		text[i] = token;
-	}    
-	
-	printf("Command: %s, name: %s\n",text[0], text[1]);
-	fflush(stdout);
-	
 	// ------------------------------------------------------------
 	// GUIDE 2:
 	// After you create the message, you need to send it to the
@@ -169,6 +151,10 @@ struct Reply process_command(const int sockfd, char* command)
 
 	int data[3];
 	char list_room[MAX_DATA];
+	
+	touppercase(command, strlen(command) - 1);
+	
+	send(sockfd, command, MAX_DATA+1, 0);
 	recv(sockfd, data, 3*sizeof(int), 0);
 	recv(sockfd, list_room, MAX_DATA,0);
 
@@ -251,6 +237,9 @@ void process_chatmode(const char* host, const char* port)
 	
 	char *buff;
 	while (1){
+		
+		//TODO: make threaded
+		
 		get_message(buff, sizeof buff);
 		recv(sockfd, buff, sizeof buff, 0);
 		display_message(buff);

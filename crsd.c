@@ -88,19 +88,77 @@ void *handle_request(void * vfd){
     printf("connected successfully\n");
     fflush(stdout);
 
-    //TODO: if it is create, create a room, if it is join give the port
-    //      if it is list room list them (need to set up a char* for it)
-    //      Also, handle errors
-
-    // Default data
+    //TODO: Create data structures for holding room names, ports, and # of users
+	
+	// Default data
     int status = 0;
     int num = 15;
     int port = 3001;
     char list_room[MAX_DATA];
     sprintf(list_room, "test room,");
 
-    //send status, num_members, and port
+	// Get command
+	char comm[MAX_DATA];
+	recv(fd, comm, MAX_DATA,0);
+	
+	// Seperate room # and command
+	char *text[2];
+	char *token;
+	int i = 0;
+	
+	token = strtok(comm, " ");
+	text[0] = token;
+	while(token != NULL){
+		i++;
+		token = strtok (NULL, " ");
+		text[i] = token;
+	}    
+
+	// Join
+	if (strncmp(comm, "JOIN", 4) == 0) {
+		printf("Joining room %s\n", text[1]);
+		
+		//TODO:
+		//Search list of rooms
+		//data[2] = port # if found
+		//data[1] = # of members 
+		//data[0] = FAILURE_NOT_EXISTS if not
+	} 
+	// List
+	else if (strncmp(comm, "LIST", 4) == 0) {
+		printf("Listing rooms\n");
+		
+		//TODO:
+		//list_room = list of rooms char*
+	}
+	// Create
+	else if (strncmp(comm, "CREATE", 6) == 0) {
+		printf("Creating room %s\n", text[1]);
+		
+		//TODO:
+		//Check if room exists
+		//Create room
+		//data[0] = success/fail
+		//Maybe send the port # too? not sure if they want us to have the user join the room or not on create
+	}
+	// Delete
+	else if (strncmp(comm, "DELETE", 6) == 0) {
+		printf("Deleting room %s\n", text[1]);
+		
+		//TODO:
+		//Check if room exists
+		//delete room
+		//data[0] = success/fail
+	}
+	else {
+		printf("Error, incorrect command given: %s\n",comm);
+	}
+	
+	
+    //send [0] = enum, [1] = # members, [3] = port #
     int data[3] = {0, 15, 3005};
+	
+	//Sends requested data
     send(fd, (char*)data, 3*sizeof(int), 0);
     send(fd, list_room, strlen (list_room)+1, 0);
 
