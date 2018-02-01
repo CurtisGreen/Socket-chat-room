@@ -32,6 +32,7 @@ int main(int argc, char** argv) {
   ServerData data;
   for(int i = 0; i < 20; i++){
     memset(data.names[i],'\0',MAX_DATA);
+    data.port[i] = -1;
   }
   
   	//struct sockaddr_storage fsin;
@@ -104,8 +105,6 @@ void *handle_request(void * inputData){
 
     printf("connected successfully\n");
     fflush(stdout);
-
-    //TODO: Create data structures for holding room names, ports, and # of users
 	
 	// Default data
     int status = 0;
@@ -166,14 +165,10 @@ void *handle_request(void * inputData){
 	else if (strncmp(comm, "LIST", 4) == 0) {
 		printf("Listing rooms\n");
 		
-		//TODO:
-		//list_room = list of rooms char*
-    //char result[MAX_DATA];
     int index = 0;
     for(int i = 0; i < 20; i++){
       int j = 0;
       while(isalpha(servData->names[i][j]) || isdigit(servData->names[i][j])){
-        printf("%c", servData->names[i][j]);
         list_room[index] = servData->names[i][j];
         index++;
         j++;
@@ -181,11 +176,10 @@ void *handle_request(void * inputData){
       
       if(list_room[index-1] != ','){
         list_room[index] = ',';
-        printf(",");
         index++;
       }
     }
-    printf("\n\n%s\n\n", list_room);
+    printf("\n%s\n\n", list_room);
 	}
 
 	// Create
@@ -196,7 +190,7 @@ void *handle_request(void * inputData){
     //Check if room exists		
     bool exists = false; 
     for(int i = 0; i < 20; i++){
-      if (strncmp(text[1],servData->names[i],5) == 0){
+      if (strncmp(text[1],servData->names[i],sizeof(text[1])) == 0){
         exists = true; 
         data[0] = 1;
       }
@@ -204,10 +198,18 @@ void *handle_request(void * inputData){
 
     //Create room
     if(!exists){
-      strcpy(servData->names[0],text[1]);
-      servData->port[0] = 17;
-      servData->members[0] = 1;
-      data[0] = 0;
+      for(int i = 0; i < 20; i++){
+        if(servData->port[i] == -1){
+          strcpy(servData->names[i],text[1]);
+          //TODO: update port data to accurate info
+          servData->port[i] = 171717;
+          servData->members[i] = 0;
+          data[0] = 0;
+          data[1] = 0;
+          data[2] = servData->port[i];
+          break;
+        }
+      }
     }
   }
 	// Delete
