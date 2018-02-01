@@ -60,7 +60,7 @@ int main(int argc, char** argv)
 		display_reply(command, reply);
 		
 		touppercase(command, strlen(command) - 1);
-		if (strncmp(command, "JOIN", 4) == 0) {
+		if (reply.status == SUCCESS && strncmp(command, "JOIN", 4) == 0) {
 			char buf[256];
 			sprintf(buf,"%d",reply.port);
 			printf("Now you are in the chatmode\n");
