@@ -19,9 +19,21 @@ int passiveTCPsock(const char * service, int backlog);
 void *handle_request(void * fd);
 int errexit(const char *format, ...);
 
+struct ServerData{
+   int fd; 
+   char names[20][MAX_DATA];
+   int port[20];
+   int members[20];
+};
+
 int main(int argc, char** argv) {
 	char * service; /* service name or port number */
-    int    m_sock, s_sock;      /* master and slave socket     */
+  int    m_sock, s_sock;      /* master and slave socket     */
+  ServerData data;
+  for(int i = 0; i < 20; i++){
+    memset(data.names[i],'\0',MAX_DATA);
+  }
+  
   	//struct sockaddr_storage fsin;
  	service = argv[1];
  	printf("Server starting on port %s...",service);
@@ -37,8 +49,8 @@ int main(int argc, char** argv) {
     		if (errno == EINTR) continue;
       		else errexit("accept failed: %s\n", strerror(errno));
     	}
-
-    	pthread_create(&th, &ta, handle_request, (void*)&s_sock);
+      data.fd = s_sock;
+    	pthread_create(&th, &ta, handle_request, (void*)&data);
     }
 }
 
@@ -71,8 +83,13 @@ int passiveTCPsock(const char * service, int backlog) {
   	return s;
 }
 
-void *handle_request(void * vfd){
-    int fd = *(int*)vfd;
+void *handle_request(void * inputData){
+    ServerData* servData = (ServerData*)inputData;
+    int fd = servData->fd;
+
+    //send [0] = enum, [1] = # members, [3] = port #
+    int data[3] = {0, 15, 3005};
+
     printf("In Handle Request\n");
 
     /* dont think this is necessary****
@@ -95,7 +112,7 @@ void *handle_request(void * vfd){
     int num = 15;
     int port = 3001;
     char list_room[MAX_DATA];
-    sprintf(list_room, "test room,");
+    memset(list_room,'\0',MAX_DATA);
 
 	// Get command
 	char comm[MAX_DATA];
@@ -115,14 +132,35 @@ void *handle_request(void * vfd){
 	}    
 
 	// Join
+  //data[2] = port # if found
+  //data[1] = # of members 
+  //data[0] = FAILURE_NOT_EXISTS if not
 	if (strncmp(comm, "JOIN", 4) == 0) {
 		printf("Joining room %s\n", text[1]);
-		
-		//TODO:
+
 		//Search list of rooms
-		//data[2] = port # if found
-		//data[1] = # of members 
-		//data[0] = FAILURE_NOT_EXISTS if not
+    bool exists = false; 
+    for(int i = 0; i < 20; i++){
+      if (strncmp(text[1],servData->names[i],5) == 0){
+        exists = true; 
+
+        //Update server data
+        servData->members[i] = 1;
+
+        //Update client data
+        data[0] = 0;
+        data[1] = servData->members[i];
+        data[2] = servData->port[i];
+
+        //TODO Make the join happen; 
+        break;
+      }
+    }
+
+    //Room not found case
+    if(!exists){
+      data[0] = FAILURE_NOT_EXISTS;
+    }
 	} 
 	// List
 	else if (strncmp(comm, "LIST", 4) == 0) {
@@ -130,17 +168,48 @@ void *handle_request(void * vfd){
 		
 		//TODO:
 		//list_room = list of rooms char*
+    //char result[MAX_DATA];
+    int index = 0;
+    for(int i = 0; i < 20; i++){
+      int j = 0;
+      while(isalpha(servData->names[i][j]) || isdigit(servData->names[i][j])){
+        printf("%c", servData->names[i][j]);
+        list_room[index] = servData->names[i][j];
+        index++;
+        j++;
+      }
+      
+      if(list_room[index-1] != ','){
+        list_room[index] = ',';
+        printf(",");
+        index++;
+      }
+    }
+    printf("\n\n%s\n\n", list_room);
 	}
+
 	// Create
+  //data[0] = success/fail
 	else if (strncmp(comm, "CREATE", 6) == 0) {
 		printf("Creating room %s\n", text[1]);
 		
-		//TODO:
-		//Check if room exists
-		//Create room
-		//data[0] = success/fail
-		//Maybe send the port # too? not sure if they want us to have the user join the room or not on create
-	}
+    //Check if room exists		
+    bool exists = false; 
+    for(int i = 0; i < 20; i++){
+      if (strncmp(text[1],servData->names[i],5) == 0){
+        exists = true; 
+        data[0] = 1;
+      }
+    }
+
+    //Create room
+    if(!exists){
+      strcpy(servData->names[0],text[1]);
+      servData->port[0] = 17;
+      servData->members[0] = 1;
+      data[0] = 0;
+    }
+  }
 	// Delete
 	else if (strncmp(comm, "DELETE", 6) == 0) {
 		printf("Deleting room %s\n", text[1]);
@@ -153,10 +222,6 @@ void *handle_request(void * vfd){
 	else {
 		printf("Error, incorrect command given: %s\n",comm);
 	}
-	
-	
-    //send [0] = enum, [1] = # members, [3] = port #
-    int data[3] = {0, 15, 3005};
 	
 	//Sends requested data
     send(fd, (char*)data, 3*sizeof(int), 0);
