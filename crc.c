@@ -1,20 +1,34 @@
+/*
+Caleb Edens - 822007959
+Curtis Green - 422008537
+
+Assignment #1
+*/
+
+/*///////////////////////////////////////////////////////////////////////////////////
+Include Statements
+*////////////////////////////////////////////////////////////////////////////////////
 #include <netdb.h>
 #include <netinet/in.h>
 #include <unistd.h>
 #include <sys/types.h>
 #include <sys/time.h>
 #include <sys/socket.h>
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include "interface.h"
 
-
+/*///////////////////////////////////////////////////////////////////////////////////
+Function Declarations 
+*////////////////////////////////////////////////////////////////////////////////////
 int connect_to(const char *host, const char *port);
 struct Reply process_command(const int sockfd, char* command);
 void process_chatmode(const char* host, const char* port);
 
+/*///////////////////////////////////////////////////////////////////////////////////
+Main
+*////////////////////////////////////////////////////////////////////////////////////
 int main(int argc, char** argv) 
 {
 	if (argc != 3) {
@@ -56,14 +70,16 @@ int main(int argc, char** argv)
     return 0;
 }
 
-/*
- * Connect to the server using given host and port information
- *
- * @parameter host    host address given by command line argument
- * @parameter port    port given by command line argument
- * 
- * @return socket fildescriptor
- */
+/*///////////////////////////////////////////////////////////////////////////////////
+Helper Functions
+*////////////////////////////////////////////////////////////////////////////////////
+
+/*-----------------------------------------------------------------------------------
+connect_to
+@parameter host    host address given by command line argument
+@parameter port    port given by command line argument
+@return socket fildescriptor
+---------------------------------------------*/
 int connect_to(const char *host, const char *port)
 {
 	// ------------------------------------------------------------
@@ -107,15 +123,14 @@ int connect_to(const char *host, const char *port)
 	return sockfd;
 }
 
-/* 
- * Send an input command to the server and return the result
- *
- * @parameter sockfd   socket file descriptor to commnunicate
- *                     with the server
- * @parameter command  command will be sent to the server
- *
- * @return    Reply    
- */
+
+/*-----------------------------------------------------------------------------------
+Reply
+Send an input command to the server and return the result
+@parameter sockfd   socket file descriptor to commnunicate
+@parameter command  command will be sent to the server
+@return    Reply
+---------------------------------------------*/
 struct Reply process_command(const int sockfd, char* command)
 {
 	// ------------------------------------------------------------
@@ -151,10 +166,11 @@ struct Reply process_command(const int sockfd, char* command)
 
 	int data[3];
 	char list_room[MAX_DATA];
+	memset(list_room,'\0',MAX_DATA);
 	
 	touppercase(command, strlen(command) - 1);
 	
-	send(sockfd, command, MAX_DATA+1, 0);
+	send(sockfd, command, MAX_DATA, 0);
 	recv(sockfd, data, 3*sizeof(int), 0);
 	recv(sockfd, list_room, MAX_DATA,0);
 
@@ -210,12 +226,13 @@ struct Reply process_command(const int sockfd, char* command)
 	return reply;
 }
 
-/* 
- * Get into the chat mode
- * 
- * @parameter host     host address
- * @parameter port     port
- */
+
+/*-----------------------------------------------------------------------------------
+Process_chatmode
+Get into the chat mode
+@parameter host     host address
+@parameter port     port
+---------------------------------------------*/
 void process_chatmode(const char* host, const char* port)
 {
 	// ------------------------------------------------------------
