@@ -48,6 +48,12 @@ int main(int argc, char** argv) {
   char * service; /* service name or port number */
   int    m_sock, s_sock;      /* master and slave socket     */
 
+  if (argc != 2) {
+    fprintf(stderr,
+        "usage: enter port number\n");
+    exit(1);
+  }
+
   //Setting up the server data struct that holds all information on rooms
   ServerData data;
   for(int i = 0; i < 20; i++){
