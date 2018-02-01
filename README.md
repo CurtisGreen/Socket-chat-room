@@ -15,5 +15,3 @@ Ex:
  * $./crsd localhost 3000
 
  * $./crc 3000
-
-CSCE438_HW1 
