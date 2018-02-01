@@ -17,6 +17,7 @@ Include Statements
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <pthread.h>
 #include "interface.h"
 
 /*///////////////////////////////////////////////////////////////////////////////////
@@ -25,6 +26,8 @@ Function Declarations
 int connect_to(const char *host, const char *port);
 struct Reply process_command(const int sockfd, char* command);
 void process_chatmode(const char* host, const char* port);
+void *receive_chat(void *threadfd);
+void *send_chat(void *threadfd);
 
 /*///////////////////////////////////////////////////////////////////////////////////
 Main
@@ -170,12 +173,14 @@ struct Reply process_command(const int sockfd, char* command)
 	
 	touppercase(command, strlen(command) - 1);
 	
+	//	Send/receive command & reply
 	send(sockfd, command, MAX_DATA, 0);
 	recv(sockfd, data, 3*sizeof(int), 0);
 	recv(sockfd, list_room, MAX_DATA,0);
 
 	printf("status = %d, num_members = %d, port = %d, list = %s\n",data[0], data[1], data[2], list_room);
 
+	// Populate reply with server data
 	reply.status = (Status)data[0];
 	reply.num_member = data[1];
 	reply.port = data[2];
@@ -252,17 +257,21 @@ void process_chatmode(const char* host, const char* port)
 	// the server.
 	// ------------------------------------------------------------
 	
-	char *buff;
-	while (1){
-		
-		//TODO: make threaded
-		
-		get_message(buff, sizeof buff);
-		recv(sockfd, buff, sizeof buff, 0);
-		display_message(buff);
-		
+	// Create Receiving thread and sending thread
+	pthread_t r_thread, s_thread;
+	int thread;
+
+	thread = pthread_create(&r_thread, NULL, send_chat, (void *)sockfd);
+	if (thread){
+		printf("Client send chat thread failed to create");
 	}
-	
+	thread = pthread_create(&r_thread, NULL, receive_chat, (void *)sockfd);
+	if (thread){
+		printf("Client receive chat thread failed to create");
+	}
+
+	pthread_exit(NULL);
+
     // ------------------------------------------------------------
     // IMPORTANT NOTICE:
     // 1. To get a message from a user, you should use a function
@@ -279,3 +288,30 @@ void process_chatmode(const char* host, const char* port)
 	// ------------------------------------------------------------
 }
 
+/*===========================================================
+  Receiving chat thread
+  =============================================================*/
+void *receive_chat(void *threadfd){
+	char buff[MAX_DATA];
+	memset(buff,'\0',MAX_DATA);
+	long sockfd = (long) threadfd;
+
+	while(1){
+		recv(sockfd, buff, sizeof buff, 0);
+		display_message(buff);
+	}
+	
+}
+
+/*===========================================================
+  Sending chat thread
+  =============================================================*/
+void *send_chat(void *threadfd){
+	char buff[MAX_DATA];
+	memset(buff,'\0',MAX_DATA);
+	long sockfd = (long) threadfd;
+	while(1){
+		get_message(buff, sizeof buff);
+		send(sockfd, buff, sizeof buff, 0);
+	}
+}

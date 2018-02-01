@@ -1,10 +1,10 @@
 default: crc crsd
 
 crc.o: crc.c interface.h
-	g++ -c crc.c -o crc.o
+	g++ -c -pthread crc.c -o crc.o
 
 crc: crc.o
-	g++ crc.o -o crc
+	g++ -pthread crc.o -o crc
 
 crsd.o: crsd.c interface.h
 	g++ -pthread -c crsd.c -o crsd.o
