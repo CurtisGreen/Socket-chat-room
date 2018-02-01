@@ -10,7 +10,9 @@ Initialize server: $./crsd host port#
 
 Initialize client: $./crc port#
 
-Ex: $./crsd localhost 3000
+Ex: 
+
+$./crsd localhost 3000
 
 $./crc 3000
 
