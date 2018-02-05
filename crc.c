@@ -18,6 +18,7 @@ Include Statements
 #include <stdlib.h>
 #include <string.h>
 #include <pthread.h>
+#include <signal.h>
 #include "interface.h"
 
 /*///////////////////////////////////////////////////////////////////////////////////
@@ -28,6 +29,9 @@ struct Reply process_command(const int sockfd, char* command);
 void process_chatmode(const char* host, const char* port);
 void *receive_chat(void *threadfd);
 void *send_chat(void *threadfd);
+void catch_signal_ctrlC(int s);
+
+long longfd;
 
 /*///////////////////////////////////////////////////////////////////////////////////
 Main
@@ -39,7 +43,7 @@ int main(int argc, char** argv)
 				"usage: enter host address and port number\n");
 		exit(1);
 	}
-
+	signal(SIGINT, catch_signal_ctrlC);
     display_title();
 	
 	while (1) {
@@ -55,8 +59,6 @@ int main(int argc, char** argv)
         get_command(command, MAX_DATA);
 
 		struct Reply reply = process_command(sockfd, command);
-		printf("got out of process_command\n");
-		fflush(stdout);
 		display_reply(command, reply);
 		
 		touppercase(command, strlen(command) - 1);
@@ -159,7 +161,7 @@ struct Reply process_command(const int sockfd, char* command)
 	reply.status = FAILURE_NOT_EXISTS;
 	reply.num_member = 10;
 	reply.port = 3000;
-	sprintf(reply.list_room, "default room,");
+	memset(reply.list_room,'\0',MAX_DATA);
 	
 	// ------------------------------------------------------------
 	// GUIDE 2:
@@ -178,13 +180,24 @@ struct Reply process_command(const int sockfd, char* command)
 	recv(sockfd, data, 3*sizeof(int), 0);
 	recv(sockfd, list_room, MAX_DATA,0);
 
-	printf("status = %d, num_members = %d, port = %d, list = %s\n",data[0], data[1], data[2], list_room);
+	//printf("status = %d, num_members = %d, port = %d, list = %s\n",data[0], data[1], data[2], list_room);
 
 	// Populate reply with server data
-	reply.status = (Status)data[0];
-	reply.num_member = data[1];
-	reply.port = data[2];
-	sprintf(reply.list_room, list_room);
+	
+	if (strncmp(command, "LIST", 4) == 0) {
+		for (int i = 0; i < MAX_DATA; i++){
+			reply.list_room[i] = list_room[i];
+		}
+		reply.status = (Status)data[0];
+	}
+	else {
+		reply.port = data[2];
+		reply.status = (Status)data[0];
+		reply.num_member = data[1];
+	}
+
+
+	
 
 	// ------------------------------------------------------------
 	// GUIDE 3:
@@ -299,6 +312,8 @@ void *receive_chat(void *threadfd){
 	while(1){
 		recv(sockfd, buff, sizeof buff, 0);
 		display_message(buff);
+		printf("\n");
+		fflush(stdout);
 	}
 	
 }
@@ -309,9 +324,18 @@ void *receive_chat(void *threadfd){
 void *send_chat(void *threadfd){
 	char buff[MAX_DATA];
 	memset(buff,'\0',MAX_DATA);
-	long sockfd = (long) threadfd;
+	longfd = (long) threadfd;
 	while(1){
 		get_message(buff, sizeof buff);
-		send(sockfd, buff, sizeof buff, 0);
+		int send_result = send(longfd, buff, sizeof buff, MSG_NOSIGNAL);
+		if (send_result < 0) {
+		  memset(buff,'\0',MAX_DATA);
+          close(longfd);
+        }
 	}
+}
+
+void catch_signal_ctrlC(int s){
+	close(longfd);
+	exit(0);
 }

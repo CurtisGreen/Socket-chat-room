@@ -30,39 +30,46 @@ Function Declarations
 int passiveTCPsock(const char * service, int backlog);
 void *handle_request(void * fd);
 int errexit(const char *format, ...);
+void *chatRoom(void * inputData);
+void *chat(void * inputData);
 
 /*///////////////////////////////////////////////////////////////////////////////////
 Data Structures 
 *////////////////////////////////////////////////////////////////////////////////////
 struct ServerData{
    int fd; 
+   int index; 
+   int sock;
    char names[20][MAX_DATA];
    int port[20];
    int members[20];
+   bool alive[20];
+   int fids[20][20];
+   int pids[20];
+   int overCount;
 };
 
 /*///////////////////////////////////////////////////////////////////////////////////
 Main
 *////////////////////////////////////////////////////////////////////////////////////
 int main(int argc, char** argv) {
-  char * service; /* service name or port number */
+  char * service = argv[1]; /* service name or port number */
   int    m_sock, s_sock;      /* master and slave socket     */
-
-  if (argc != 2) {
-    fprintf(stderr,
-        "usage: enter port number\n");
-    exit(1);
-  }
 
   //Setting up the server data struct that holds all information on rooms
   ServerData data;
+  data.index = -1;
+  data.overCount = 0;
   for(int i = 0; i < 20; i++){
     memset(data.names[i],'\0',MAX_DATA);
-    data.port[i] = -1; //-1 as an invalid address placeholder
+    data.port[i] = atoi(argv[1]) + i + 1; //-1 as an invalid address placeholder
+    data.pids[i] = -1;
+    data.alive[i] = false;
+    for(int j = 0; j < 20; j++){
+      data.fids[i][j] = -1;
+    }
   }
-  
-  
- 	service = argv[1];
+   
  	printf("Server starting on port %s...",service);
   m_sock = passiveTCPsock(service, 32);
   pthread_t th; pthread_attr_t ta;
@@ -133,7 +140,7 @@ void *handle_request(void * inputData){
 
   //this is the array that will be sent back to the client at the end of the request
   //send [0] = enum, [1] = # members, [3] = port #, list_room = list function result
-  int data[3] = {0, 15, 3005};
+  int data[3] = {0, 0, 0};
   char list_room[MAX_DATA];
   memset(list_room,'\0',MAX_DATA);
 
@@ -168,7 +175,7 @@ void *handle_request(void * inputData){
         exists = true; 
 
         //Update server data
-        servData->members[i] = 1;
+        servData->members[i]++;
 
         //Update client data
         data[0] = 0;
@@ -215,7 +222,7 @@ void *handle_request(void * inputData){
   Create
   =============================================================*/
 	else if (strncmp(comm, "CREATE", 6) == 0) {
-		printf("Creating room %s\n", text[1]);
+		
 		
     //Check if room exists		
     bool exists = false; 
@@ -229,11 +236,28 @@ void *handle_request(void * inputData){
     //Create room
     if(!exists){
       for(int i = 0; i < 20; i++){
-        if(servData->port[i] == -1){
+        if(!servData->alive[i] && i == servData->overCount){
+          servData->overCount++;
           strcpy(servData->names[i],text[1]);
-          //TODO: update port data to accurate info
-          servData->port[i] = 171717;
+          printf("Creating room %s on port %d\n", text[1], servData->port[i]);
+          servData->index = i;
+          //printf("Index set to %d\n", servData->index);
+          //convert port number from in to char *
+          char roomPort[10];
+          memset(roomPort,'\0',10);
+          sprintf(roomPort, "%d", servData->port[i]);
+          
+          int m_sock = passiveTCPsock(roomPort, 32);
+          pthread_t th; pthread_attr_t ta;
+          pthread_attr_init(&ta);
+          pthread_attr_setdetachstate(&ta, PTHREAD_CREATE_DETACHED);
+          pthread_create(&th, &ta, chatRoom, inputData);
+
+          
+          servData->sock = m_sock;
+          //printf("sock set to %d\n", servData->sock);
           servData->members[i] = 0;
+          servData->alive[i] = true;
           data[0] = 0;
           data[1] = 0;
           data[2] = servData->port[i];
@@ -257,9 +281,8 @@ void *handle_request(void * inputData){
         exists = true; 
 
         //Update server data
-        //TODO: actually delete something
+        servData->alive[i] = false;
         servData->members[i] = 0;
-        servData->port[i] = -1;
         memset(servData->names[i],'\0',MAX_DATA);
 
         //Update client data
@@ -279,9 +302,11 @@ void *handle_request(void * inputData){
 	}
 	
 	//Sends data back to client 
-  send(fd, (char*)data, 3*sizeof(int), 0);
-  send(fd, list_room, strlen (list_room)+1, 0);
-
+  int send_result = send(fd, (char*)data, 3*sizeof(int), MSG_NOSIGNAL);
+  if (send_result < 0) { 
+    close(fd);
+  }
+  send_result = send(fd, list_room, strlen (list_room)+1, MSG_NOSIGNAL);
 	close(fd);
 }
 
@@ -298,4 +323,84 @@ int errexit(const char *format, ...){
 	vfprintf(stderr, format, args);
 	va_end(args);
 	exit(1);
+}
+
+/*-----------------------------------------------------------------------------------
+chatRoom
+This function handles the chat rooms. each room runs this function on its own thread
+with its own port. 
+---------------------------------------------*/
+void *chatRoom(void * inputData){
+  //exctract the index for all of the data
+  ServerData* servData = (ServerData*)inputData;
+  int roomIndex = servData->index;
+  int m_sock = servData->sock;
+  int s_sock;
+
+  
+  while (servData->alive[roomIndex]) {
+    
+    s_sock = accept(m_sock,NULL,NULL);
+    if (s_sock < 0){
+      if (errno == EINTR) continue;
+      else errexit("accept failed: %s\n", strerror(errno));
+    }
+    
+    fflush(stdout);
+    for(int i = 0; i < 20; i++){
+      if(servData->fids[roomIndex][i] == -1){
+        servData->fids[roomIndex][i] = s_sock;
+        servData->fd = s_sock;
+        break;
+      }
+    }
+    pthread_t th; pthread_attr_t ta;
+    pthread_attr_init(&ta);
+    pthread_attr_setdetachstate(&ta, PTHREAD_CREATE_DETACHED);
+    pthread_create(&th, &ta, chat, inputData);
+  }
+  pthread_exit(NULL);
+}
+
+
+/*-----------------------------------------------------------------------------------
+chat
+This function handles the chat input and output taken from the clients. Each client
+gets their own thread with this running. 
+---------------------------------------------*/
+void *chat(void * inputData){
+  //exctract the index for all of the data
+  ServerData* servData = (ServerData*)inputData;
+  int roomIndex = servData->index;
+  int fd = servData->fd;
+  char comm[MAX_DATA];
+  memset(comm,'\0',MAX_DATA);
+  bool death = false; 
+  
+  //printf("in chat\n");
+  while (servData->alive[roomIndex] && !death) {
+    // Get message
+    memset(comm,'\0',MAX_DATA);
+    if(recv(fd, comm, MAX_DATA,0) < 0){
+      death = true;
+    }
+    for(int i = 0; i < 20; i++){
+
+      if(servData->fids[roomIndex][i] != fd && servData->fids[roomIndex][i] != -1){
+      
+        int send_result = send(servData->fids[roomIndex][i], comm, strlen (comm)+1, MSG_NOSIGNAL);
+
+        if (send_result < 0) { 
+          death = true;
+          servData->members[roomIndex]--;
+          if(servData->fids[roomIndex][i] == fd){
+            printf("Tis marks the death of %d...", fd);
+            servData->fids[roomIndex][i] = -1;
+          }
+          close(fd);
+        }
+      }
+    }
+    
+  }
 }
