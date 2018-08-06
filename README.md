@@ -1,17 +1,17 @@
-# CSCE438_HW1
+# Socket chat room
 
 Chat room client and server using TCP socket connections 
 
 Usage commands:
 
- * Compile: $make
+ * Compile: $ make
 
- * Server: $./crsd host port#
+ * Server: $ ./crsd host port#
 
- * Client: $./crc port#
+ * Client: $ ./crc host port#
 
 Ex: 
 
- * $./crsd localhost 3000
+ * $ ./crsd localhost 3000
 
- * $./crc 3000
+ * $ ./crc localhost 3000
